@@ -1,16 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
 export default function SignupPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -22,7 +21,7 @@ export default function SignupPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/connect`,
       },
     })
 
@@ -32,9 +31,57 @@ export default function SignupPage() {
       return
     }
 
-    // Redirect naar connect na signup — Supabase stuurt verificatie email
-    router.push('/connect?new=1')
-    router.refresh()
+    setSent(true)
+  }
+
+  if (sent) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--color-bg)' }}>
+        <div className="w-full max-w-sm">
+          {/* Check mark */}
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center mb-6"
+            style={{ backgroundColor: 'var(--color-accent-light)' }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-accent)' }}>
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+
+          <h1 className="text-2xl font-semibold mb-2" style={{ color: 'var(--color-text)' }}>
+            Check your email
+          </h1>
+          <p className="text-sm mb-6" style={{ color: 'var(--color-muted)' }}>
+            We sent a confirmation link to <span className="font-medium" style={{ color: 'var(--color-text)' }}>{email}</span>.
+            Click the link to activate your account.
+          </p>
+
+          {/* Spam tip */}
+          <div
+            className="px-4 py-3 rounded-md text-sm mb-6"
+            style={{ backgroundColor: 'var(--color-accent-light)', borderLeft: '3px solid var(--color-accent)' }}
+          >
+            <p className="font-medium mb-0.5" style={{ color: 'var(--color-accent)' }}>
+              Not in your inbox?
+            </p>
+            <p style={{ color: 'var(--color-muted)' }}>
+              Check your <strong>spam or junk folder</strong> — confirmation emails sometimes end up there.
+            </p>
+          </div>
+
+          <p className="text-sm text-center" style={{ color: 'var(--color-muted)' }}>
+            Wrong email?{' '}
+            <button
+              onClick={() => { setSent(false); setEmail(''); setPassword('') }}
+              className="font-medium hover:underline"
+              style={{ color: 'var(--color-accent)' }}
+            >
+              Start over
+            </button>
+          </p>
+        </div>
+      </main>
+    )
   }
 
   return (

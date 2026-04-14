@@ -10,6 +10,18 @@ export interface IntervalsEvent {
   indoor: boolean | null
 }
 
+export interface IntervalsActivity {
+  id: number
+  start_date_local: string
+  icu_training_load: number | null  // werkelijke TSS
+  moving_time: number | null        // seconden
+  name: string | null
+  type: string | null               // "Ride" | "Run" | "VirtualRide" etc.
+  average_watts: number | null      // gem. vermogen
+  calories: number | null           // verbrande calorieën
+  kilojoules: number | null         // mechanische arbeid (fallback voor calories)
+}
+
 export interface IntervalsAthlete {
   id: string
   name: string
@@ -62,6 +74,20 @@ export async function getAthlete(
     authType,
     token,
   })
+}
+
+// Haal voltooide activiteiten op
+export async function getActivities(
+  athleteId: string,
+  authType: 'oauth2' | 'api_key',
+  token: string,
+  oldest: string,
+  newest: string
+): Promise<IntervalsActivity[] | null> {
+  return intervalsFetch<IntervalsActivity[]>(
+    `/athlete/${athleteId}/activities?oldest=${oldest}&newest=${newest}`,
+    { athleteId, authType, token }
+  )
 }
 
 // Haal events op — 30 dagen terug + 14 dagen vooruit

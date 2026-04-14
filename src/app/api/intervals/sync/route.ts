@@ -22,5 +22,9 @@ export async function POST() {
     return NextResponse.json({ error: result.error }, { status })
   }
 
-  return NextResponse.json({ synced: result.synced })
+  return NextResponse.json({
+    synced: result.synced,
+    events: result.events,
+    activities: result.activities,
+  })
 }

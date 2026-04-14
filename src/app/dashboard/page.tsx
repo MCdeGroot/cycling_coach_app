@@ -5,6 +5,8 @@ import type { Goal, TSSBand } from '@/lib/macro-engine'
 import CockpitReadout from '@/components/dashboard/cockpit-readout'
 import SevenDayView from '@/components/dashboard/seven-day-view'
 import ReconnectBanner from '@/components/dashboard/reconnect-banner'
+import SyncButton from '@/components/dashboard/sync-button'
+import ManualWorkout from '@/components/dashboard/manual-workout'
 import Link from 'next/link'
 
 interface AthleteProfile {
@@ -22,6 +24,10 @@ interface Workout {
   duration_min: number | null
   name: string | null
   is_planned: boolean
+  avg_watts: number | null
+  calories_kcal: number | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  raw_data: Record<string, any> | null
 }
 
 interface DailyTarget {
@@ -79,12 +85,14 @@ export default async function DashboardPage({
   const today = todayLocal()
   const next7 = getNext7Days()
 
-  // Haal workouts op voor de komende 7 dagen
+  // Haal workouts op: 7 dagen vooruit + vandaag (inclusief voltooide activiteiten)
+  // Gesorteerd: completed (is_planned=false) vóór planned — zodat we de echte activiteit prefereren
   const { data: workouts } = await supabase
     .from('workouts')
-    .select('id, date, tss, duration_min, name, is_planned')
+    .select('id, date, tss, duration_min, name, is_planned, avg_watts, calories_kcal, raw_data')
     .eq('user_id', user.id)
     .in('date', next7)
+    .order('is_planned', { ascending: true }) // false (completed) eerst
     .returns<Workout[]>()
 
   // Haal today's food log totaal op
@@ -95,12 +103,20 @@ export default async function DashboardPage({
     .eq('date', today)
 
   const loggedCarbs = foodEntries?.reduce((sum, e) => sum + (e.carb_g ?? 0), 0) ?? 0
+  const loggedProtein = foodEntries?.reduce((sum, e) => sum + (e.protein_g ?? 0), 0) ?? 0
+  const loggedFat = foodEntries?.reduce((sum, e) => sum + (e.fat_g ?? 0), 0) ?? 0
   const loggedKcal = foodEntries?.reduce((sum, e) => sum + (e.kcal ?? 0), 0) ?? 0
 
   // Bereken macro targets als profiel compleet is
   const hasProfile = profile?.weight_kg && profile?.goal
 
-  const todayWorkout = workouts?.find((w) => w.date === today) ?? null
+  // Prefereer voltooide activiteit met echte TSS — Strava stubs hebben null TSS
+  const todayWorkouts = workouts?.filter((w) => w.date === today) ?? []
+  const todayWorkout =
+    todayWorkouts.find((w) => !w.is_planned && w.tss != null) ??
+    todayWorkouts.find((w) => !w.is_planned) ??
+    todayWorkouts[0] ??
+    null
 
   let todayMacros = null
   if (hasProfile) {
@@ -114,7 +130,12 @@ export default async function DashboardPage({
 
   // Bereken 7-day macros
   const weekData = next7.map((date) => {
-    const workout = workouts?.find((w) => w.date === date) ?? null
+    const dayWorkouts = workouts?.filter((w) => w.date === date) ?? []
+    const workout =
+      dayWorkouts.find((w) => !w.is_planned && w.tss != null) ??
+      dayWorkouts.find((w) => !w.is_planned) ??
+      dayWorkouts[0] ??
+      null
     const macros = hasProfile
       ? calculateDailyMacrosFromLoad(
           profile!.weight_kg!,
@@ -171,6 +192,8 @@ export default async function DashboardPage({
             bandLabel={BAND_LABELS[todayMacros.band]}
             workout={todayWorkout}
             loggedCarbG={loggedCarbs}
+            loggedProteinG={loggedProtein}
+            loggedFatG={loggedFat}
             totalKcal={todayMacros.total_kcal}
             loggedKcal={loggedKcal}
             proteinG={todayMacros.protein_g}
@@ -198,22 +221,11 @@ export default async function DashboardPage({
           </div>
         )}
 
-        {/* Sync knop */}
-        {profile?.intervals_athlete_id && (
-          <form action="/api/intervals/sync" method="POST">
-            <button
-              type="submit"
-              className="text-sm px-4 py-2 rounded-md border transition-colors"
-              style={{
-                borderColor: 'var(--color-border)',
-                color: 'var(--color-muted)',
-                backgroundColor: 'var(--color-surface)',
-              }}
-            >
-              Sync workouts
-            </button>
-          </form>
-        )}
+        {/* Sync + manual entry */}
+        <div className="flex flex-col gap-3">
+          {profile?.intervals_athlete_id && <SyncButton />}
+          {hasProfile && <ManualWorkout />}
+        </div>
 
         {/* 7-day view */}
         {hasProfile && <SevenDayView weekData={weekData} today={today} />}

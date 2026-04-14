@@ -1,15 +1,13 @@
-interface Workout {
-  name: string | null
-  duration_min: number | null
-  tss: number | null
-  is_planned: boolean
-}
+import ActivityCard from './activity-card'
+import type { ActivityCardWorkout } from './activity-card'
 
 interface Props {
   carbG: number
   bandLabel: string
-  workout: Workout | null
+  workout: ActivityCardWorkout | null
   loggedCarbG: number
+  loggedProteinG: number
+  loggedFatG: number
   totalKcal: number
   loggedKcal: number
   proteinG: number
@@ -17,18 +15,56 @@ interface Props {
   fatFloorApplied: boolean
 }
 
-function formatDuration(min: number) {
-  const h = Math.floor(min / 60)
-  const m = min % 60
-  if (h === 0) return `${m}min`
-  if (m === 0) return `${h}h`
-  return `${h}h ${m}min`
+// Carbs → amber (accent), Protein → green (success), Fat → indigo
+const MACRO_COLOR = {
+  carb:    { bar: 'var(--color-accent)',  text: 'var(--color-accent)'  },
+  protein: { bar: '#1B7A3E',             text: '#1B7A3E'               },
+  fat:     { bar: '#4F46E5',             text: '#4F46E5'               },
 }
 
-function progressColor(pct: number) {
+function carbProgressColor(pct: number) {
   if (pct > 1.1) return 'var(--color-error)'
   if (pct > 0.8) return 'var(--color-warning)'
-  return 'var(--color-accent)'
+  return MACRO_COLOR.carb.bar
+}
+
+function MacroBar({
+  label,
+  loggedG,
+  targetG,
+  color,
+}: {
+  label: string
+  loggedG: number
+  targetG: number
+  color: string
+}) {
+  const pct = targetG > 0 ? loggedG / targetG : 0
+  const pctCapped = Math.min(pct, 1)
+
+  return (
+    <div>
+      <div className="flex justify-between text-xs mb-1">
+        <span style={{ color: 'var(--color-muted)' }}>{label}</span>
+        <span className="tabular-nums" style={{ color }}>
+          {loggedG}g <span style={{ color: 'var(--color-muted)' }}>/ {targetG}g</span>
+        </span>
+      </div>
+      <div
+        className="h-1.5 rounded-full overflow-hidden"
+        role="progressbar"
+        aria-valuenow={loggedG}
+        aria-valuemin={0}
+        aria-valuemax={targetG}
+        style={{ backgroundColor: 'var(--color-bg)' }}
+      >
+        <div
+          className="h-full rounded-full transition-all duration-300"
+          style={{ width: `${Math.round(pctCapped * 100)}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  )
 }
 
 export default function CockpitReadout({
@@ -36,15 +72,14 @@ export default function CockpitReadout({
   bandLabel,
   workout,
   loggedCarbG,
+  loggedProteinG,
+  loggedFatG,
   totalKcal,
   loggedKcal,
   proteinG,
   fatG,
   fatFloorApplied,
 }: Props) {
-  const carbPct = carbG > 0 ? loggedCarbG / carbG : 0
-  const carbPctCapped = Math.min(carbPct, 1)
-
   return (
     <section aria-label="Today's targets">
       {/* Carb number — cockpit readout */}
@@ -78,14 +113,9 @@ export default function CockpitReadout({
         </span>
       </div>
 
-      {/* Today's workout */}
+      {/* Activity card */}
       {workout ? (
-        <p className="text-sm mb-6" style={{ color: 'var(--color-muted)' }}>
-          {workout.name ?? 'Workout'}
-          {workout.duration_min ? ` · ${formatDuration(workout.duration_min)}` : ''}
-          {workout.tss ? ` · TSS ${Math.round(workout.tss)}` : ''}
-          {workout.is_planned ? ' · planned' : ''}
-        </p>
+        <ActivityCard workout={workout} />
       ) : (
         <p className="text-sm mb-6" style={{ color: 'var(--color-muted)' }}>
           No workout planned today — rest day targets shown.
@@ -101,43 +131,24 @@ export default function CockpitReadout({
           Today's macros
         </h2>
 
-        {/* Carb progress bar */}
-        <div>
-          <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
-            <span>Carbs</span>
-            <span className="tabular-nums">
-              {loggedCarbG}g / {carbG}g
-            </span>
-          </div>
-          <div
-            className="h-1.5 rounded-full overflow-hidden"
-            role="progressbar"
-            aria-valuenow={loggedCarbG}
-            aria-valuemin={0}
-            aria-valuemax={carbG}
-            style={{ backgroundColor: 'var(--color-bg)' }}
-          >
-            <div
-              className="h-full rounded-full transition-all duration-300"
-              style={{
-                width: `${Math.round(carbPctCapped * 100)}%`,
-                backgroundColor: progressColor(carbPct),
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Protein */}
-        <div className="flex justify-between text-sm tabular-nums" style={{ color: 'var(--color-muted)' }}>
-          <span>Protein</span>
-          <span>{proteinG}g</span>
-        </div>
-
-        {/* Fat */}
-        <div className="flex justify-between text-sm tabular-nums" style={{ color: 'var(--color-muted)' }}>
-          <span>Fat</span>
-          <span>{fatG}g</span>
-        </div>
+        <MacroBar
+          label="Carbs"
+          loggedG={loggedCarbG}
+          targetG={carbG}
+          color={carbProgressColor(carbG > 0 ? loggedCarbG / carbG : 0)}
+        />
+        <MacroBar
+          label="Protein"
+          loggedG={loggedProteinG}
+          targetG={proteinG}
+          color={MACRO_COLOR.protein.bar}
+        />
+        <MacroBar
+          label="Fat"
+          loggedG={loggedFatG}
+          targetG={fatG}
+          color={MACRO_COLOR.fat.bar}
+        />
 
         {fatFloorApplied && (
           <p className="text-xs italic" style={{ color: 'var(--color-muted)' }}>

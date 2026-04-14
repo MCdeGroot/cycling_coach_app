@@ -65,6 +65,20 @@
 
   /* Radius */
   --radius: 6px;
+
+  /* Aliases voor Phase 1 components */
+  --color-bg: var(--background);
+  --color-surface: var(--card);
+  --color-text: var(--foreground);
+  --color-muted: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--primary);
+  --color-accent-hover: var(--primary-hover);
+  --color-accent-light: var(--primary-light);
+  --color-error: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-brevet-bg: var(--brevet-bg);
 }
 
 .dark {
@@ -88,6 +102,20 @@
   --accent-foreground: #E8720F;
   --destructive: #E74C3C;
   --brevet-bg: #1E1D1A;
+
+  /* Aliases voor Phase 1 components */
+  --color-bg: var(--background);
+  --color-surface: var(--card);
+  --color-text: var(--foreground);
+  --color-muted: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--primary);
+  --color-accent-hover: var(--primary-hover);
+  --color-accent-light: var(--accent);
+  --color-error: var(--destructive);
+  --color-success: #2ECC71;
+  --color-warning: #F0A500;
+  --color-brevet-bg: var(--brevet-bg);
 }
 
 @layer base {
